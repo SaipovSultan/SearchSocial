@@ -17,7 +17,9 @@ public:
     const string& GetDocument(size_t id) const {
         return docs[id];
     }
-
+    size_t count() const{
+        return docs.size();
+    }
 private:
     map<string, list<size_t>> index;
     vector<string> docs;
@@ -29,9 +31,7 @@ public:
     explicit SearchServer(istream& document_input);
     void UpdateDocumentBase(istream& document_input);
     void AddQueriesStream(istream& query_input, ostream& search_results_output);
+
 private:
-    const int block_size = 5000;
     InvertedIndex index;
-    string ParseQuery(const string& query);
-    vector<string> ParseQueries(vector<string> queries);
 };
