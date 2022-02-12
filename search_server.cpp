@@ -29,22 +29,24 @@ void SearchServer::UpdateDocumentBase(istream& document_input) {
 void SearchServer::AddQueriesStream(
         istream& query_input, ostream& search_results_output
 ) {
-    vector<size_t> docid_count(index.count(), 0);
+    vector<size_t> docid_count(index.size(), 0);
     for (string current_query; getline(query_input, current_query); ) {
+        list<size_t> docids;
         const auto words = SplitIntoWords(current_query);
         for (const auto& word : words) {
             for (const size_t docid : index.Lookup(word)) {
+                if(docid_count[docid] == 0) docids.push_back(docid);
                 docid_count[docid]++;
             }
         }
         vector<pair<size_t, size_t>> search_results;
-        search_results.reserve(docid_count.size());
-        for(size_t pos = 0;pos < docid_count.size();++pos){
-            search_results.push_back({docid_count[pos], pos});
-            docid_count[pos] = 0;
+        search_results.reserve(docids.size());
+        for(size_t docid : docids){
+            search_results.push_back({docid, docid_count[docid]});
+            docid_count[docid] = 0;
         }
-        partial_sort(begin(search_results), begin(search_results) + 5, end(search_results), [](const auto& lhs, const auto& rhs){
-            return (lhs.first == rhs.first && lhs.second > rhs.second) || lhs.first < rhs.first;
+        partial_sort(begin(search_results),begin(search_results) + min<size_t>(5, search_results.size()), end(search_results), [](const auto& lhs, const auto& rhs){
+            return (lhs.second == rhs.second && lhs.first < rhs.first) || lhs.second > rhs.second;
         });
         search_results_output << current_query << ':';
         for (auto [docid, hitcount] : Head(search_results, 5)) {

@@ -17,7 +17,7 @@ public:
     const string& GetDocument(size_t id) const {
         return docs[id];
     }
-    size_t count() const{
+    size_t size() const{
         return docs.size();
     }
 private:
