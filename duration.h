@@ -1,4 +1,5 @@
 #pragma once
+#include "profile.h"
 #include <iostream>
 #include <string>
 #include <chrono>
@@ -27,3 +28,6 @@ private:
     std::chrono::steady_clock::duration& add_to;
     std::chrono::steady_clock::time_point start;
 };
+
+#define ADD_DURATION(value) \
+    AddDuration UNIQ_ID{value}

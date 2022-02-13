@@ -7,18 +7,16 @@
 #include <vector>
 #include <map>
 #include <string>
-#include <future>
 using namespace std;
 
 class InvertedIndex {
 public:
-    void Add(const string& document);
-    const list<size_t>&  Lookup(const string& word) const;
-
+    void Add(string document);
+    const list<size_t>& Lookup(const string& word) const;
     const string& GetDocument(size_t id) const {
         return docs[id];
     }
-    size_t size() const{
+    size_t count() const{
         return docs.size();
     }
 private:
@@ -33,12 +31,7 @@ public:
     explicit SearchServer(istream& document_input);
     void UpdateDocumentBase(istream& document_input);
     void AddQueriesStream(istream& query_input, ostream& search_results_output);
-    void ParseQuery(const string& current_query, vector<size_t>& docid_count, stringstream& search_results_output);
-    stringstream ParseQueries(vector<string> queries);
+
 private:
     InvertedIndex index;
-    const int max_count_docs_on_thread = 10000;
-    mutex m;
 };
-
-lock_guard<mutex> lock(mutex& m);

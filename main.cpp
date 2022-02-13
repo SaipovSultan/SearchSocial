@@ -1,6 +1,7 @@
 #include "search_server.h"
 #include "parse.h"
 #include "test_runner.h"
+#include "profile.h"
 
 #include <algorithm>
 #include <iterator>
@@ -32,6 +33,42 @@ void TestFunctionality(
     for (size_t i = 0; i < lines.size(); ++i) {
         ASSERT_EQUAL(lines[i], expected[i]);
     }
+}
+
+void TestBig() {
+    int count = 1000;
+    vector<string> docs;
+    vector<string> queries;
+    vector<string> expected;
+    docs.reserve(count * 2);
+    queries.reserve(count * 2);
+    expected.reserve(count * 2);
+    for(int i = 0;i < count;++i){
+        docs.push_back("london is the capital of great britain");
+        docs.push_back("i am travelling down the river");
+        queries.push_back("london");
+        queries.push_back("the");
+        expected.push_back("london: {docid: 0, hitcount: 1} {docid: 2, hitcount: 1} {docid: 4, hitcount: 1} {docid: 6, hitcount: 1} {docid: 8, hitcount: 1}");
+        expected.push_back(Join(' ', vector{
+                "the:",
+                "{docid: 0, hitcount: 1}",
+                "{docid: 1, hitcount: 1}",
+                "{docid: 2, hitcount: 1}",
+                "{docid: 3, hitcount: 1}",
+                "{docid: 4, hitcount: 1}"
+        }));
+    }
+    istringstream docs_input(Join('\n', docs));
+    istringstream queries_input(Join('\n', queries));
+
+    {
+        LOG_DURATION("Total")
+        SearchServer srv;
+        srv.UpdateDocumentBase(docs_input);
+        ostringstream queries_output;
+        srv.AddQueriesStream(queries_input, queries_output);
+    }
+    TestFunctionality(docs, queries, expected);
 }
 
 void TestSerpFormat() {
@@ -202,9 +239,10 @@ void TestBasicSearch() {
 
 int main() {
     TestRunner tr;
-    RUN_TEST(tr, TestSerpFormat);
+    /*RUN_TEST(tr, TestSerpFormat);
     RUN_TEST(tr, TestTop5);
     RUN_TEST(tr, TestHitcount);
     RUN_TEST(tr, TestRanking);
-    RUN_TEST(tr, TestBasicSearch);
+    RUN_TEST(tr, TestBasicSearch);*/
+    RUN_TEST(tr, TestBig);
 }

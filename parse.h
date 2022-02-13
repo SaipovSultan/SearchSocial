@@ -19,3 +19,5 @@ string Join(char c, const Container& cont) {
 
 string_view Strip(string_view s);
 vector<string_view> SplitBy(string_view s, char sep);
+string_view StripSv(string_view& s);
+vector<string> SplitBySv(const string& str, char sep = ' ');
