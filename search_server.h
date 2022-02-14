@@ -2,36 +2,46 @@
 
 #include <istream>
 #include <ostream>
-#include <set>
-#include <list>
 #include <vector>
-#include <map>
+#include <unordered_map>
 #include <string>
-using namespace std;
+#include <deque>
+#include <future>
+
+#include "Synchronized.h"
+
 
 class InvertedIndex {
 public:
-    void Add(string document);
-    const list<size_t>& Lookup(const string& word) const;
-    const string& GetDocument(size_t id) const {
+    InvertedIndex() = default;
+    explicit InvertedIndex(std::istream& document_input);
+    void Add(std::string&& document);
+    const std::vector<std::pair<size_t, size_t>>& Lookup(std::string_view word) const;
+    const std::deque<std::string>& GetDocuments() const {
+        return docs;
+    }
+    const std::string& GetDocument(size_t id) const {
         return docs[id];
     }
-    size_t count() const{
+    const size_t GetSize() const {
         return docs.size();
     }
 private:
-    map<string, list<size_t>> index;
-    vector<string> docs;
-    list<size_t> empty;
+    std::deque<std::string> docs;
+    std::unordered_map<std::string_view, std::vector<std::pair<size_t, size_t>>> index;
+
 };
 
 class SearchServer {
 public:
     SearchServer() = default;
-    explicit SearchServer(istream& document_input);
-    void UpdateDocumentBase(istream& document_input);
-    void AddQueriesStream(istream& query_input, ostream& search_results_output);
+    explicit SearchServer(std::istream& document_input) :
+            index(InvertedIndex(document_input))
+    {}
+    void UpdateDocumentBase(std::istream& document_input);
+    void AddQueriesStream(std::istream& query_input, std::ostream& search_results_output);
 
 private:
-    InvertedIndex index;
+    Synchronized<InvertedIndex> index;
+    std::vector<std::future<void>> async_threads;
 };

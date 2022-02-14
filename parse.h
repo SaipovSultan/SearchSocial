@@ -16,8 +16,7 @@ string Join(char c, const Container& cont) {
     os << *rbegin(cont);
     return os.str();
 }
-
-string_view Strip(string_view s);
 vector<string_view> SplitBy(string_view s, char sep);
-string_view StripSv(string_view& s);
-vector<string> SplitBySv(const string& str, char sep = ' ');
+string_view Strip(string_view s);
+void StripSv(string_view& s);
+vector<string_view> SplitIntoWords(const string& str, char sep = ' ');

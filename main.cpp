@@ -10,24 +10,22 @@
 #include <string>
 #include <sstream>
 #include <fstream>
-#include <random>
-#include <thread>
-using namespace std;
+
 
 void TestFunctionality(
-        const vector<string>& docs,
-        const vector<string>& queries,
-        const vector<string>& expected
+        const std::vector<std::string>& docs,
+        const std::vector<std::string>& queries,
+        const std::vector<std::string>& expected
 ) {
-    istringstream docs_input(Join('\n', docs));
-    istringstream queries_input(Join('\n', queries));
+    std::istringstream docs_input(Join('\n', docs));
+    std::istringstream queries_input(Join('\n', queries));
 
     SearchServer srv;
     srv.UpdateDocumentBase(docs_input);
-    ostringstream queries_output;
+    std::ostringstream queries_output;
     srv.AddQueriesStream(queries_input, queries_output);
 
-    const string result = queries_output.str();
+    const std::string result = queries_output.str();
     const auto lines = SplitBy(Strip(result), '\n');
     ASSERT_EQUAL(lines.size(), expected.size());
     for (size_t i = 0; i < lines.size(); ++i) {
@@ -35,51 +33,15 @@ void TestFunctionality(
     }
 }
 
-void TestBig() {
-    int count = 1000;
-    vector<string> docs;
-    vector<string> queries;
-    vector<string> expected;
-    docs.reserve(count * 2);
-    queries.reserve(count * 2);
-    expected.reserve(count * 2);
-    for(int i = 0;i < count;++i){
-        docs.push_back("london is the capital of great britain");
-        docs.push_back("i am travelling down the river");
-        queries.push_back("london");
-        queries.push_back("the");
-        expected.push_back("london: {docid: 0, hitcount: 1} {docid: 2, hitcount: 1} {docid: 4, hitcount: 1} {docid: 6, hitcount: 1} {docid: 8, hitcount: 1}");
-        expected.push_back(Join(' ', vector{
-                "the:",
-                "{docid: 0, hitcount: 1}",
-                "{docid: 1, hitcount: 1}",
-                "{docid: 2, hitcount: 1}",
-                "{docid: 3, hitcount: 1}",
-                "{docid: 4, hitcount: 1}"
-        }));
-    }
-    istringstream docs_input(Join('\n', docs));
-    istringstream queries_input(Join('\n', queries));
-
-    {
-        LOG_DURATION("Total")
-        SearchServer srv;
-        srv.UpdateDocumentBase(docs_input);
-        ostringstream queries_output;
-        srv.AddQueriesStream(queries_input, queries_output);
-    }
-    TestFunctionality(docs, queries, expected);
-}
-
 void TestSerpFormat() {
-    const vector<string> docs = {
+    const std::vector<std::string> docs = {
             "london is the capital of great britain",
             "i am travelling down the river"
     };
-    const vector<string> queries = {"london", "the"};
-    const vector<string> expected = {
+    const std::vector<std::string> queries = {"london", "the"};
+    const std::vector<std::string> expected = {
             "london: {docid: 0, hitcount: 1}",
-            Join(' ', vector{
+            Join(' ', std::vector<std::string>{
                     "the:",
                     "{docid: 0, hitcount: 1}",
                     "{docid: 1, hitcount: 1}"
@@ -90,7 +52,7 @@ void TestSerpFormat() {
 }
 
 void TestTop5() {
-    const vector<string> docs = {
+    const std::vector<std::string> docs = {
             "milk a",
             "milk b",
             "milk c",
@@ -103,9 +65,9 @@ void TestTop5() {
             "fire and earth"
     };
 
-    const vector<string> queries = {"milk", "water", "rock"};
-    const vector<string> expected = {
-            Join(' ', vector{
+    const std::vector<std::string> queries = {"milk", "water", "rock"};
+    const std::vector<std::string> expected = {
+            Join(' ', std::vector<std::string>{
                     "milk:",
                     "{docid: 0, hitcount: 1}",
                     "{docid: 1, hitcount: 1}",
@@ -113,7 +75,7 @@ void TestTop5() {
                     "{docid: 3, hitcount: 1}",
                     "{docid: 4, hitcount: 1}"
             }),
-            Join(' ', vector{
+            Join(' ', std::vector<std::string>{
                     "water:",
                     "{docid: 7, hitcount: 1}",
                     "{docid: 8, hitcount: 1}",
@@ -124,27 +86,28 @@ void TestTop5() {
 }
 
 void TestHitcount() {
-    const vector<string> docs = {
+
+    const std::vector<std::string> docs = {
             "the river goes through the entire city there is a house near it",
             "the wall",
             "walle",
             "is is is is",
     };
-    const vector<string> queries = {"the", "wall", "all", "is", "the is"};
-    const vector<string> expected = {
-            Join(' ', vector{
+    const std::vector<std::string> queries = {"the", "wall", "all", "is", "the is"};
+    const std::vector<std::string> expected = {
+            Join(' ', std::vector<std::string>{
                     "the:",
                     "{docid: 0, hitcount: 2}",
                     "{docid: 1, hitcount: 1}",
             }),
             "wall: {docid: 1, hitcount: 1}",
             "all:",
-            Join(' ', vector{
+            Join(' ', std::vector<std::string>{
                     "is:",
                     "{docid: 3, hitcount: 4}",
                     "{docid: 0, hitcount: 1}",
             }),
-            Join(' ', vector{
+            Join(' ', std::vector<std::string>{
                     "the is:",
                     "{docid: 3, hitcount: 4}",
                     "{docid: 0, hitcount: 3}",
@@ -154,8 +117,9 @@ void TestHitcount() {
     TestFunctionality(docs, queries, expected);
 }
 
+
 void TestRanking() {
-    const vector<string> docs = {
+    const std::vector<std::string> docs = {
             "london is the capital of great britain",
             "paris is the capital of france",
             "berlin is the capital of germany",
@@ -180,9 +144,9 @@ void TestRanking() {
             "warsaw is the capital of poland",
     };
 
-    const vector<string> queries = {"moscow is the capital of russia"};
-    const vector<string> expected = {
-            Join(' ', vector{
+    const std::vector<std::string> queries = {"moscow is the capital of russia"};
+    const std::vector<std::string> expected = {
+            Join(' ', std::vector<std::string>{
                     "moscow is the capital of russia:",
                     "{docid: 7, hitcount: 6}",
                     "{docid: 14, hitcount: 6}",
@@ -195,7 +159,7 @@ void TestRanking() {
 }
 
 void TestBasicSearch() {
-    const vector<string> docs = {
+    const std::vector<std::string> docs = {
             "we are ready to go",
             "come on everybody shake you hands",
             "i love this game",
@@ -208,7 +172,7 @@ void TestBasicSearch() {
             "we dont need no education"
     };
 
-    const vector<string> queries = {
+    const std::vector<std::string> queries = {
             "we need some help",
             "it",
             "i love this game",
@@ -217,13 +181,13 @@ void TestBasicSearch() {
             "about"
     };
 
-    const vector<string> expected = {
-            Join(' ', vector{
+    const std::vector<std::string> expected = {
+            Join(' ', std::vector<std::string>{
                     "we need some help:",
                     "{docid: 9, hitcount: 2}",
                     "{docid: 0, hitcount: 1}"
             }),
-            Join(' ', vector{
+            Join(' ', std::vector<std::string>{
                     "it:",
                     "{docid: 8, hitcount: 2}",
                     "{docid: 6, hitcount: 1}",
@@ -237,12 +201,13 @@ void TestBasicSearch() {
     TestFunctionality(docs, queries, expected);
 }
 
+//Test for Single Thread
 int main() {
     TestRunner tr;
-    /*RUN_TEST(tr, TestSerpFormat);
+    RUN_TEST(tr, TestSerpFormat);
     RUN_TEST(tr, TestTop5);
     RUN_TEST(tr, TestHitcount);
     RUN_TEST(tr, TestRanking);
-    RUN_TEST(tr, TestBasicSearch);*/
-    RUN_TEST(tr, TestBig);
+    RUN_TEST(tr, TestBasicSearch);
+
 }
