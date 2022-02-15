@@ -3,43 +3,26 @@
 #include "parse.h"
 
 #include <algorithm>
-#include <iterator>
-#include <sstream>
 #include <iostream>
 #include <numeric>
 
-void InvertedIndex::Add(std::string&& document) {
-    docs.push_back(std::move(document));
-    const size_t docid = docs.size() - 1;
-    for (std::string_view word : SplitIntoWords(docs.back())) {
-        auto& cur_index = index[word];
-        if (cur_index.empty() || cur_index.back().first != docid) {
-            cur_index.emplace_back(docid, 1u);
-        }else{
-            cur_index.back().second++;
+InvertedIndex::InvertedIndex(std::istream& document_input) {
+    for (std::string current_document; getline(document_input, current_document); ) {
+        docs.push_back(std::move(current_document));
+        const size_t docid = docs.size() - 1;
+        for (std::string_view word : SplitIntoWords(docs.back())) {
+            auto& docids= index[word];
+            if(docids.empty() || docids.back().docid != docid){
+                docids.push_back({docid, 1u});
+            }else{
+                ++docids.back().hitcount;
+            }
         }
     }
 }
 
-InvertedIndex::InvertedIndex(std::istream& document_input) {
-    for (std::string current_document; getline(document_input, current_document); ) {
-        Add(move(current_document));
-    }
-}
-
-
-void UpdateIndex(std::istream& document_input, Synchronized<InvertedIndex>& index) {
-    InvertedIndex new_index(document_input);
-    std::swap(index.GetAccess().ref_to_value, new_index);
-}
-
-void SearchServer::UpdateDocumentBase(std::istream& document_input) {
-    async_threads.push_back(async(UpdateIndex, std::ref(document_input), std::ref(index)));
-}
-
-
-const std::vector<std::pair<size_t, size_t>>& InvertedIndex::Lookup(std::string_view word) const {
-    static const std::vector<std::pair<size_t, size_t>> empty;
+const std::vector<InvertedIndex::Entry>& InvertedIndex::Lookup(std::string_view word) const {
+    static const std::vector<InvertedIndex::Entry> empty;
     if (auto it = index.find(word); it != index.end()) {
         return it->second;
     }
@@ -48,23 +31,32 @@ const std::vector<std::pair<size_t, size_t>>& InvertedIndex::Lookup(std::string_
     }
 }
 
+void UpdateIndex(std::istream& document_input, Synchronized<InvertedIndex>& index) {
+    InvertedIndex new_index(document_input);
+    std::swap(index.GetAccess().ref_to_value, new_index);
+}
 
-void AddQueriesStreamSingleThread(
-        std::istream& query_input, std::ostream& search_results_output, Synchronized<InvertedIndex>& index
+void SearchServer::UpdateDocumentBase(std::istream& document_input) {
+    async_tasks.push_back(async(UpdateIndex, std::ref(document_input), std::ref(index)));
+    async_tasks.back().get();
+}
+
+void ProcessSearches(
+        std::istream& query_input, std::ostream& search_results_output, Synchronized<InvertedIndex>& index_handle
 ) {
     std::vector<size_t> docid_count;
-    std::vector<std::pair<size_t, size_t>>search_results;
+    std::vector<size_t> docids;
+
     for (std::string current_query; getline(query_input, current_query); )
     {
         const auto words = SplitIntoWords(current_query);
         {
-            auto access = index.GetAccess();
-            const size_t doc_count = access.ref_to_value.GetSize();
-
+            auto access = index_handle.GetAccess();
+            const size_t doc_count = access.ref_to_value.GetDocuments().size();
             docid_count.assign(doc_count, 0);
-            search_results.resize(doc_count);
-
+            docids.resize(doc_count);
             auto& index = access.ref_to_value;
+
             for (const auto& word : words) {
                 for (const auto& [docid, hit_count] : index.Lookup(word)) {
                     docid_count[docid] += hit_count;
@@ -72,27 +64,21 @@ void AddQueriesStreamSingleThread(
             }
         }
 
-        for (size_t i = 0; i < search_results.size(); ++i) {
-            search_results[i] = { i, docid_count[i] };
-        }
+        std::iota(docids.begin(), docids.end(), 0u);
 
         partial_sort(
-                search_results.begin(),
-                Head(search_results, 5).end(),
-                search_results.end(),
-                [](std::pair<size_t, size_t> lhs, std::pair<size_t, size_t> rhs) {
-                    int64_t lhs_docid = lhs.first;
-                    auto lhs_hit_count = lhs.second;
-                    int64_t rhs_docid = rhs.first;
-                    auto rhs_hit_count = rhs.second;
-                    return std::make_pair(lhs_hit_count, -lhs_docid) >
-                           std::make_pair(rhs_hit_count, -rhs_docid);
+                docids.begin(),
+                Head(docids, 5).end(),
+                docids.end(),
+                [&docid_count](const size_t& lhs, const size_t& rhs) {
+                    return docid_count[lhs] > docid_count[rhs] || (docid_count[lhs] == docid_count[rhs] && lhs < rhs);
                 }
         );
 
         search_results_output << current_query << ':';
-        for (auto [docid, hitcount] : Head(search_results, 5))
+        for (size_t docid : Head(docids, 5))
         {
+            const size_t hitcount = docid_count[docid];
             if (hitcount == 0) {
                 break;
             }
@@ -108,11 +94,10 @@ void AddQueriesStreamSingleThread(
 void SearchServer::AddQueriesStream(
         std::istream& query_input, std::ostream& search_results_output
 ) {
-    async_threads.push_back(
+    async_tasks.push_back(
             async(
-                    AddQueriesStreamSingleThread, std::ref(query_input),
+                    ProcessSearches, std::ref(query_input),
                     std::ref(search_results_output), std::ref(index)
             )
     );
-
 }

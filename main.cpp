@@ -20,16 +20,53 @@ void TestFunctionality(
     std::istringstream docs_input(Join('\n', docs));
     std::istringstream queries_input(Join('\n', queries));
 
-    SearchServer srv;
-    srv.UpdateDocumentBase(docs_input);
     std::ostringstream queries_output;
-    srv.AddQueriesStream(queries_input, queries_output);
+    {
+        SearchServer srv;
+        srv.UpdateDocumentBase(docs_input);
+        srv.AddQueriesStream(queries_input, queries_output);
+    }
 
     const std::string result = queries_output.str();
     const auto lines = SplitBy(Strip(result), '\n');
     ASSERT_EQUAL(lines.size(), expected.size());
     for (size_t i = 0; i < lines.size(); ++i) {
         ASSERT_EQUAL(lines[i], expected[i]);
+    }
+}
+
+void TestBig(){
+    const int count = 5000;
+    std::vector<std::string> docs;
+    std::vector<std::string> queries;
+    std::vector<std::string> expected;
+    for(int i = 0;i < count;++i){
+        docs.push_back("london is the capital of great britain");
+        docs.push_back("i am travelling down the river");
+        queries.push_back("london");
+        queries.push_back("the");
+        expected.push_back(Join(' ', std::vector<std::string>{
+                "london:",
+                "{docid: 0, hitcount: 1}",
+                "{docid: 2, hitcount: 1}",
+                "{docid: 4, hitcount: 1}",
+                "{docid: 6, hitcount: 1}",
+                "{docid: 8, hitcount: 1}"
+        }));
+        expected.push_back(Join(' ', std::vector<std::string>{
+                "the:",
+                "{docid: 0, hitcount: 1}",
+                "{docid: 1, hitcount: 1}",
+                "{docid: 2, hitcount: 1}",
+                "{docid: 3, hitcount: 1}",
+                "{docid: 4, hitcount: 1}"
+        }));
+    }
+    std::istringstream docs_input(Join('\n', docs));
+    std::istringstream queries_input(Join('\n', queries));
+    {
+        LOG_DURATION("Time");
+        TestFunctionality(docs, queries, expected);
     }
 }
 
@@ -204,10 +241,11 @@ void TestBasicSearch() {
 //Test for Single Thread
 int main() {
     TestRunner tr;
-    RUN_TEST(tr, TestSerpFormat);
+    /*RUN_TEST(tr, TestSerpFormat);
     RUN_TEST(tr, TestTop5);
     RUN_TEST(tr, TestHitcount);
     RUN_TEST(tr, TestRanking);
-    RUN_TEST(tr, TestBasicSearch);
+    RUN_TEST(tr, TestBasicSearch);*/
+    RUN_TEST(tr, TestBig);
 
 }
